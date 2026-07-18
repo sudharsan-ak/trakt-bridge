@@ -28,10 +28,23 @@ No UI, no write access to your Trakt account, no scraping - everything goes thro
 | `/api/trakt/continue-watching` | GET | In-progress playback |
 | `/api/trakt/calendar` | GET | Upcoming episodes (`?days=`, default 14) |
 | `/api/trakt/recommendations` | GET | Trakt's own recommendations |
-| `/api/trakt/search` | GET | Look up one title (`?title=`), with watched/rating/watchlist status |
+| `/api/trakt/search` | GET | Look up one title (`?title=`), with watched/rating/watchlist status and poster |
+| `/api/trakt/mark-watched` | POST | Mark a movie/show watched by Trakt ID (see "Write capability" below) |
 | `/api/openapi.json` | GET | OpenAPI 3.1 doc for wiring a Custom GPT Action |
 
 All `/api/trakt/*` data routes (everything except `login`/`callback`) require an `x-api-key` header matching `RECOMMENDATION_API_KEY`. Missing or wrong key returns 401. If the OAuth flow hasn't been completed yet, they return 409.
+
+### Write capability
+
+`/api/trakt/mark-watched` is the one endpoint in this bridge that modifies the Trakt account - it calls `POST https://api.trakt.tv/sync/history`. It takes a `traktId` and `type` (not a raw title), by design: titles are ambiguous, Trakt IDs aren't, and marking the wrong item watched isn't easily reversible.
+
+The intended flow is search-then-confirm-then-write:
+
+1. Call `/api/trakt/search?title=...` to resolve a title to a Trakt ID, year, and poster image.
+2. Show the result to the user (title, year, poster) and get explicit confirmation.
+3. Only then call `/api/trakt/mark-watched` with that Trakt ID.
+
+That confirmation step is enforced by instructions given to the GPT (see "Wiring up a Custom GPT Action" below), not by the API itself - `/api/trakt/mark-watched` has no way to verify a human actually confirmed anything. Anyone holding the `RECOMMENDATION_API_KEY` can write to the Trakt account directly. This is acceptable for a single-user bridge where you control the key, but it's not a safety boundary - treat the API key with the same care as the Trakt tokens themselves.
 
 ### Why so many endpoints instead of one combined one
 
@@ -58,9 +71,12 @@ Every movie/show in every list response (except `/api/trakt/search`, which adds 
   "rating": null,
   "genres": [],
   "runtime": null,
-  "overview": ""
+  "overview": "",
+  "posterUrl": ""
 }
 ```
+
+`posterUrl` is only populated by `/api/trakt/search` (Trakt's `/search/*` endpoints return images by default; the `/sync/*` endpoints used by the other list routes don't).
 
 ## Setup
 
@@ -131,16 +147,16 @@ curl -H "x-api-key: $RECOMMENDATION_API_KEY" http://localhost:3000/api/trakt/wat
 1. In ChatGPT, create a new GPT -> Configure -> Actions -> Create new action.
 2. Authentication: **API Key**, Auth Type **Custom**, header name `x-api-key`, value = your `RECOMMENDATION_API_KEY`.
 3. Schema: **Import from URL** -> `https://<your-app>.vercel.app/api/openapi.json`.
-4. Add instructions telling the GPT to call these actions when asked about watch history or for recommendations, and to avoid re-recommending anything already watched or watchlisted.
+4. Add instructions telling the GPT to call these actions when asked about watch history or for recommendations, to avoid re-recommending anything already watched or watchlisted, and - important - to always call `searchTraktTitle` and show the user the title/year/poster for explicit confirmation before ever calling `markWatched`.
 
 ## Security notes
 
 - `TRAKT_CLIENT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, and Trakt access/refresh tokens are only ever read server-side (route handlers, `lib/`) and are never included in a response body or logged.
 - Every `/api/trakt/*` data route 401s without a valid `x-api-key`.
-- This app only performs `GET` requests against Trakt - nothing here can modify your Trakt account.
+- Almost everything here only performs `GET` requests against Trakt. The one exception is `/api/trakt/mark-watched`, which writes to the account - see "Write capability" above for how that's gated and what its limits are.
 
 ## What this is not
 
 - Not a full Trakt client app - there's no UI beyond a one-line status page.
 - Not a recommendation engine - Trakt's own `/recommendations/*` endpoints are surfaced as-is, nothing is re-ranked.
-- Not a write-capable integration - no add/remove/rate endpoints are called.
+- Not a general write-capable integration - the only mutation exposed is marking something watched; there's no add-to-watchlist, remove-from-history, rate, or any endpoint that touches lists or collection.

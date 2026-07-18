@@ -54,11 +54,16 @@
       "genres": ["comedy", "action", "crime"],
       "runtime": 112,
       "overview": "After making their way through high school, undercover cops Schmidt and Jenko are ready to move on to college.",
+      "posterUrl": "https://media.trakt.tv/images/movies/000/117/143/posters/medium/c33615a317.jpg.webp",
       "watched": true,
       "lastWatchedAt": "2026-07-18T07:46:00.000Z",
       "onWatchlist": false
     },
     "show": null
+  },
+  "POST /api/trakt/mark-watched": {
+    "requestBody": { "traktId": 117143, "type": "movie" },
+    "response": { "success": true, "traktId": 117143, "type": "movie" }
   },
   "GET /api/trakt/calendar?days=14": {
     "items": [

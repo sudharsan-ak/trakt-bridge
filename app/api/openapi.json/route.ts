@@ -26,6 +26,7 @@ const normalizedItemSchema = {
     genres: { type: "array", items: { type: "string" } },
     runtime: { type: ["integer", "null"] },
     overview: { type: "string" },
+    posterUrl: { type: "string" },
   },
 };
 
@@ -60,8 +61,8 @@ export async function GET(request: NextRequest) {
     openapi: "3.1.0",
     info: {
       title: "Trakt Bridge",
-      description: "Read-only bridge exposing a Trakt user's watch history, watchlist, collection, ratings, and recommendations as normalized JSON, split into small per-section endpoints.",
-      version: "2.0.0",
+      description: "Bridge exposing a Trakt user's watch history, watchlist, collection, ratings, and recommendations as normalized JSON, split into small per-section endpoints. Mostly read-only, with one write action (markWatched) gated by a required prior search + user confirmation.",
+      version: "2.1.0",
     },
     servers: [{ url: baseUrl }],
     paths: {
@@ -128,7 +129,7 @@ export async function GET(request: NextRequest) {
       "/api/trakt/search": {
         get: {
           operationId: "searchTraktTitle",
-          summary: "Look up a single movie or show by title and check whether the user has watched it, rated it, or has it on their watchlist",
+          summary: "Look up a single movie or show by title, returning its poster image, year, and Trakt ID along with whether the user has watched it, rated it, or has it on their watchlist. Always call this before markWatched so the exact title/poster can be confirmed with the user first.",
           security: [{ ApiKeyAuth: [] }],
           parameters: [
             {
@@ -157,6 +158,50 @@ export async function GET(request: NextRequest) {
             },
             "400": { description: "Missing 'title' query parameter" },
             "401": { description: "Missing or invalid x-api-key" },
+            "409": { description: "Trakt account not connected yet" },
+          },
+        },
+      },
+      "/api/trakt/mark-watched": {
+        post: {
+          operationId: "markWatched",
+          summary: "Mark a specific movie or show as watched on the user's Trakt account. This modifies the user's real Trakt history. Only call this after searchTraktTitle has been used to show the user the exact title, year, and poster, and the user has explicitly confirmed it's correct.",
+          security: [{ ApiKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["traktId", "type"],
+                  properties: {
+                    traktId: { type: "integer", description: "Trakt ID from a prior searchTraktTitle call" },
+                    type: { type: "string", enum: ["movie", "show"] },
+                    watchedAt: { type: "string", description: "ISO 8601 timestamp; defaults to now if omitted" },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Marked as watched",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      success: { type: "boolean" },
+                      traktId: { type: "integer" },
+                      type: { type: "string" },
+                    },
+                  },
+                },
+              },
+            },
+            "400": { description: "Missing or invalid traktId/type in request body" },
+            "401": { description: "Missing or invalid x-api-key" },
+            "404": { description: "No movie/show found on Trakt with that id" },
             "409": { description: "Trakt account not connected yet" },
           },
         },

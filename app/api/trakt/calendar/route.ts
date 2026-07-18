@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { withTraktAuth } from "@/lib/api-handler";
 import { traktGet } from "@/lib/trakt";
-import type { NormalizedItem } from "@/lib/normalize";
+import { normalizeItem, type NormalizedItem } from "@/lib/normalize";
 
 // GET /calendars/my/shows/{start_date}/{days}
 // https://docs.trakt.tv/reference/getcalendarsshows
@@ -15,6 +15,7 @@ interface CalendarShowEntry {
     ids?: { trakt?: number; slug?: string; imdb?: string; tmdb?: number };
     overview?: string;
     genres?: string[];
+    images?: { poster?: string[] };
   };
 }
 
@@ -28,17 +29,7 @@ export const GET = withTraktAuth(async (request, accessToken) => {
   });
 
   const items: NormalizedItem[] = (raw ?? []).map((entry) => ({
-    title: entry.show?.title ?? "",
-    year: entry.show?.year ?? null,
-    traktId: entry.show?.ids?.trakt ?? null,
-    slug: entry.show?.ids?.slug ?? "",
-    imdbId: entry.show?.ids?.imdb ?? "",
-    tmdbId: entry.show?.ids?.tmdb ?? null,
-    watchedAt: "",
-    listedAt: entry.first_aired ?? "",
-    rating: null,
-    genres: entry.show?.genres ?? [],
-    runtime: null,
+    ...normalizeItem({ show: entry.show, listed_at: entry.first_aired }),
     overview: entry.episode?.title
       ? `S${entry.episode.season}E${entry.episode.number} - ${entry.episode.title}`
       : (entry.show?.overview ?? ""),

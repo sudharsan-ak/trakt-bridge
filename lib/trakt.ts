@@ -134,6 +134,36 @@ export async function traktGet<T>({
   return res.json();
 }
 
+interface TraktPostOptions {
+  accessToken: string;
+  path: string;
+  body: unknown;
+}
+
+// POST wrapper for the one write path this bridge exposes (marking watched).
+// Unlike traktGet, a non-2xx here always throws — there's no "empty section"
+// fallback that makes sense for a write the caller explicitly asked for.
+export async function traktPost<T>({ accessToken, path, body }: TraktPostOptions): Promise<T> {
+  const res = await fetch(`${TRAKT_API_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "trakt-api-version": "2",
+      "trakt-api-key": env.TRAKT_CLIENT_ID,
+      Authorization: `Bearer ${accessToken}`,
+      "User-Agent": "trakt-bridge/1.0",
+    },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new TraktRequestError(path, res.status, await safeText(res));
+  }
+
+  return res.json();
+}
+
 export class TraktRequestError extends Error {
   constructor(
     public readonly path: string,

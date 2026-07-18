@@ -13,6 +13,7 @@ export interface NormalizedItem {
   genres: string[];
   runtime: number | null;
   overview: string;
+  posterUrl: string;
 }
 
 interface RawIds {
@@ -22,6 +23,10 @@ interface RawIds {
   tmdb?: number;
 }
 
+interface RawImages {
+  poster?: string[];
+}
+
 interface RawMovieOrShow {
   title?: string;
   year?: number;
@@ -29,6 +34,14 @@ interface RawMovieOrShow {
   genres?: string[];
   runtime?: number;
   overview?: string;
+  images?: RawImages;
+}
+
+// Trakt's poster URLs come back protocol-relative (e.g. "media.trakt.tv/...")
+function posterUrlFrom(images?: RawImages): string {
+  const path = images?.poster?.[0];
+  if (!path) return "";
+  return path.startsWith("http") ? path : `https://${path}`;
 }
 
 // Trakt wraps the movie/show object differently per endpoint (sync/history
@@ -43,6 +56,7 @@ interface NormalizeInput {
   genres?: string[];
   runtime?: number;
   overview?: string;
+  images?: RawImages;
   watched_at?: string;
   last_watched_at?: string;
   listed_at?: string;
@@ -67,6 +81,7 @@ export function normalizeItem(raw: NormalizeInput): NormalizedItem {
     genres: media.genres ?? [],
     runtime: media.runtime ?? null,
     overview: media.overview ?? "",
+    posterUrl: posterUrlFrom(media.images),
   };
 }
 
