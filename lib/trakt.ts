@@ -18,7 +18,7 @@ interface TraktTokenResponse {
 export async function exchangeCodeForTokens(code: string): Promise<TraktTokenResponse> {
   const res = await fetch(`${TRAKT_API_BASE}/oauth/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "User-Agent": "trakt-bridge/1.0" },
     body: JSON.stringify({
       client_id: env.TRAKT_CLIENT_ID,
       client_secret: env.TRAKT_CLIENT_SECRET,
@@ -40,7 +40,7 @@ export async function exchangeCodeForTokens(code: string): Promise<TraktTokenRes
 async function refreshTokens(refreshToken: string): Promise<TraktTokenResponse> {
   const res = await fetch(`${TRAKT_API_BASE}/oauth/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "User-Agent": "trakt-bridge/1.0" },
     body: JSON.stringify({
       client_id: env.TRAKT_CLIENT_ID,
       client_secret: env.TRAKT_CLIENT_SECRET,
