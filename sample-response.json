@@ -1,70 +1,32 @@
 {
-  "profile": {
-    "username": "sudharsanak",
-    "name": "Sudharsan"
+  "GET /api/trakt/profile": {
+    "profile": {
+      "username": "sudharsanak",
+      "name": "Sudharsan"
+    }
   },
-  "movies": {
-    "watched": [
+  "GET /api/trakt/watchlist": {
+    "movies": [
       {
         "title": "Oppenheimer",
         "year": 2023,
-        "traktId": 500000,
+        "traktId": 698292,
         "slug": "oppenheimer-2023",
         "imdbId": "tt15398776",
         "tmdbId": 872585,
         "watchedAt": "",
-        "listedAt": "",
+        "listedAt": "2026-06-01T10:00:00.000Z",
         "rating": null,
-        "genres": ["drama", "history"],
-        "runtime": 180,
-        "overview": "The story of J. Robert Oppenheimer's role in the development of the atomic bomb."
+        "genres": ["history", "drama"],
+        "runtime": 181,
+        "overview": "The story of J. Robert Oppenheimer's role in the development of the atomic bomb during World War II."
       }
     ],
-    "recentlyWatched": [
-      {
-        "title": "Dune: Part Two",
-        "year": 2024,
-        "traktId": 500123,
-        "slug": "dune-part-two-2024",
-        "imdbId": "tt15239678",
-        "tmdbId": 693134,
-        "watchedAt": "2026-07-15T02:14:00.000Z",
-        "listedAt": "",
-        "rating": null,
-        "genres": ["science-fiction", "adventure"],
-        "runtime": 166,
-        "overview": "Paul Atreides unites with Chani and the Fremen."
-      }
-    ],
-    "watchlist": [],
-    "collection": [],
-    "ratings": [
-      {
-        "title": "Oppenheimer",
-        "year": 2023,
-        "traktId": 500000,
-        "slug": "oppenheimer-2023",
-        "imdbId": "tt15398776",
-        "tmdbId": 872585,
-        "watchedAt": "",
-        "listedAt": "",
-        "rating": 9,
-        "genres": [],
-        "runtime": null,
-        "overview": ""
-      }
-    ],
-    "continueWatching": [],
-    "recommendations": []
-  },
-  "shows": {
-    "watched": [],
-    "recentlyWatched": [],
-    "watchlist": [
+    "shows": [
       {
         "title": "Severance",
         "year": 2022,
-        "traktId": 500456,
+        "traktId": 155351,
         "slug": "severance-2022",
         "imdbId": "tt11280740",
         "tmdbId": 95396,
@@ -75,15 +37,35 @@
         "runtime": 55,
         "overview": "Mark leads a team at Lumon Industries."
       }
-    ],
-    "collection": [],
-    "ratings": [],
-    "continueWatching": [],
-    "calendar": [
+    ]
+  },
+  "GET /api/trakt/search?title=22 Jump Street": {
+    "found": true,
+    "movie": {
+      "title": "22 Jump Street",
+      "year": 2014,
+      "traktId": 117143,
+      "slug": "22-jump-street-2014",
+      "imdbId": "tt2294449",
+      "tmdbId": 187017,
+      "watchedAt": "",
+      "listedAt": "",
+      "rating": null,
+      "genres": ["comedy", "action", "crime"],
+      "runtime": 112,
+      "overview": "After making their way through high school, undercover cops Schmidt and Jenko are ready to move on to college.",
+      "watched": true,
+      "lastWatchedAt": "2026-07-18T07:46:00.000Z",
+      "onWatchlist": false
+    },
+    "show": null
+  },
+  "GET /api/trakt/calendar?days=14": {
+    "items": [
       {
         "title": "Severance",
         "year": 2022,
-        "traktId": 500456,
+        "traktId": 155351,
         "slug": "severance-2022",
         "imdbId": "tt11280740",
         "tmdbId": 95396,
@@ -94,15 +76,6 @@
         "runtime": null,
         "overview": "S2E5 - The Wafers"
       }
-    ],
-    "recommendations": []
-  },
-  "lists": [],
-  "metadata": {
-    "lastFetchedAt": "2026-07-18T12:00:00.000Z",
-    "source": "trakt",
-    "missingOrUnsupportedSections": [
-      "movies.recommendations: endpoint unavailable or requires different access"
     ]
   }
 }

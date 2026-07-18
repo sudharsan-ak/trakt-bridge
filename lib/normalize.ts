@@ -1,5 +1,5 @@
 // Shared normalized item shape returned for every movie/show across all
-// sections of the recommendation-context response.
+// trakt-bridge endpoints.
 export interface NormalizedItem {
   title: string;
   year: number | null;
@@ -44,6 +44,7 @@ interface NormalizeInput {
   runtime?: number;
   overview?: string;
   watched_at?: string;
+  last_watched_at?: string;
   listed_at?: string;
   collected_at?: string;
   rated_at?: string;
@@ -60,7 +61,7 @@ export function normalizeItem(raw: NormalizeInput): NormalizedItem {
     slug: media.ids?.slug ?? "",
     imdbId: media.ids?.imdb ?? "",
     tmdbId: media.ids?.tmdb ?? null,
-    watchedAt: raw.watched_at ?? "",
+    watchedAt: raw.watched_at ?? raw.last_watched_at ?? "",
     listedAt: raw.listed_at ?? raw.collected_at ?? "",
     rating: raw.rating ?? null,
     genres: media.genres ?? [],
