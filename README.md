@@ -20,7 +20,7 @@ No UI, no write access to your Trakt account, no scraping - everything goes thro
 | `/api/trakt/login` | GET | Starts Trakt OAuth, redirects to Trakt |
 | `/api/trakt/callback` | GET | OAuth redirect target, stores tokens |
 | `/api/trakt/profile` | GET | Username + display name |
-| `/api/trakt/watched` | GET | All-time watched movies + shows |
+| `/api/trakt/watched` | GET | All-time watched movies + shows (`?genre=`, optional) |
 | `/api/trakt/recently-watched` | GET | Most recent watch history (`?limit=`, default 20) |
 | `/api/trakt/watchlist` | GET | Movies + shows on the watchlist |
 | `/api/trakt/collection` | GET | Collected movies + shows |

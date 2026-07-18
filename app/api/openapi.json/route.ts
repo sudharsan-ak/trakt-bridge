@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     info: {
       title: "Trakt Bridge",
       description: "Bridge exposing a Trakt user's watch history, watchlist, collection, ratings, and recommendations as normalized JSON, split into small per-section endpoints. Mostly read-only, with one write action (markWatched) gated by a required prior search + user confirmation.",
-      version: "2.1.0",
+      version: "2.2.0",
     },
     servers: [{ url: baseUrl }],
     paths: {
@@ -75,7 +75,27 @@ export async function GET(request: NextRequest) {
           },
         },
       }),
-      ...simpleGet("/api/trakt/watched", "getTraktWatched", "Get all movies and shows the user has ever watched", moviesAndShows),
+      "/api/trakt/watched": {
+        get: {
+          operationId: "getTraktWatched",
+          summary: "Get all movies and shows the user has ever watched, optionally filtered to one genre",
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: "genre",
+              in: "query",
+              required: false,
+              description: "Filter to items matching this genre exactly (e.g. 'comedy', 'action', 'drama'). Case-insensitive. Omit to return the full watched list.",
+              schema: { type: "string" },
+            },
+          ],
+          responses: {
+            "200": { description: "Watched movies and shows", content: { "application/json": { schema: moviesAndShows } } },
+            "401": { description: "Missing or invalid x-api-key" },
+            "409": { description: "Trakt account not connected yet" },
+          },
+        },
+      },
       "/api/trakt/recently-watched": {
         get: {
           operationId: "getTraktRecentlyWatched",
