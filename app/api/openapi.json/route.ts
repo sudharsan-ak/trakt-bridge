@@ -109,6 +109,7 @@ export async function GET(request: NextRequest) {
       },
     },
     components: {
+      schemas: {},
       securitySchemes: {
         ApiKeyAuth: {
           type: "apiKey",
