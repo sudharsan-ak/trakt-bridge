@@ -97,6 +97,13 @@ interface TraktRequestOptions {
   searchParams?: Record<string, string | number | undefined>;
 }
 
+function diagLog(event: string, fields: Record<string, unknown>) {
+  if (process.env.TRAKT_DEBUG !== "1") return;
+  // Safe by construction: callers only ever pass status/counts/ids/headers,
+  // never the accessToken or any Trakt response body in full.
+  console.log(`[trakt] ${event}`, JSON.stringify(fields));
+}
+
 // Thin GET wrapper that attaches the required Trakt headers. Returns null on
 // 404 and throws on other non-2xx statuses so callers can decide per-endpoint
 // whether a failure should be fatal or just an empty section.
@@ -125,6 +132,14 @@ export async function traktGet<T>({
     cache: "no-store",
   });
 
+  diagLog("request", {
+    path,
+    searchParams,
+    status: res.status,
+    pageCount: res.headers.get("x-pagination-page-count"),
+    itemCount: res.headers.get("x-pagination-item-count"),
+  });
+
   if (res.status === 404) return null;
 
   if (!res.ok) {
@@ -132,6 +147,66 @@ export async function traktGet<T>({
   }
 
   return res.json();
+}
+
+// Trakt paginates /sync/* list endpoints (default page size is small enough
+// that any account with 100+ items in a section will silently lose older
+// entries past page 1 if only page 1 is fetched — this bit /sync/watched/movies
+// for a 128-item history). Follows X-Pagination-Page-Count and concatenates
+// every page. Callers that need a full, order-independent list (watched,
+// watchlist, collection, ratings) should use this instead of a single traktGet.
+export async function traktGetAllPages<T>({
+  accessToken,
+  path,
+  searchParams,
+}: TraktRequestOptions): Promise<T[]> {
+  const results: T[] = [];
+  let page = 1;
+  let pageCount = 1;
+
+  do {
+    const url = new URL(`${TRAKT_API_BASE}${path}`);
+    const params = { ...searchParams, page, limit: 100 };
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined) url.searchParams.set(key, String(value));
+    }
+
+    const res = await fetch(url.toString(), {
+      headers: {
+        "Content-Type": "application/json",
+        "trakt-api-version": "2",
+        "trakt-api-key": env.TRAKT_CLIENT_ID,
+        Authorization: `Bearer ${accessToken}`,
+        "User-Agent": "trakt-bridge/1.0",
+      },
+      cache: "no-store",
+    });
+
+    const pageCountHeader = res.headers.get("x-pagination-page-count");
+    const itemCountHeader = res.headers.get("x-pagination-item-count");
+
+    diagLog("paginatedRequest", {
+      path,
+      page,
+      status: res.status,
+      pageCountHeader,
+      itemCountHeader,
+    });
+
+    if (res.status === 404) return results;
+
+    if (!res.ok) {
+      throw new TraktRequestError(path, res.status, await safeText(res));
+    }
+
+    const body = (await res.json()) as T[];
+    results.push(...body);
+
+    pageCount = pageCountHeader ? Number(pageCountHeader) : 1;
+    page += 1;
+  } while (page <= pageCount);
+
+  return results;
 }
 
 interface TraktPostOptions {

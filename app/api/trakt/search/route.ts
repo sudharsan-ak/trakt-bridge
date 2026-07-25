@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withTraktAuth } from "@/lib/api-handler";
-import { traktGet } from "@/lib/trakt";
+import { traktGet, traktGetAllPages } from "@/lib/trakt";
 import { normalizeItem, normalizeList, type NormalizedItem } from "@/lib/normalize";
 
 // GET /search/movie and /search/show — https://docs.trakt.tv/reference/getsearchquery
@@ -39,9 +39,9 @@ export const GET = withTraktAuth(async (request, accessToken) => {
 
   async function withStatus(item: NormalizedItem, type: "movie" | "show") {
     const [watched, watchlist, ratings] = await Promise.all([
-      traktGet<unknown>({ accessToken, path: `/sync/watched/${type}s` }),
-      traktGet<unknown>({ accessToken, path: `/sync/watchlist/${type}s` }),
-      traktGet<unknown>({ accessToken, path: `/sync/ratings/${type}s` }),
+      traktGetAllPages<unknown>({ accessToken, path: `/sync/watched/${type}s` }),
+      traktGetAllPages<unknown>({ accessToken, path: `/sync/watchlist/${type}s` }),
+      traktGetAllPages<unknown>({ accessToken, path: `/sync/ratings/${type}s` }),
     ]);
 
     const watchedMatch = findMatch(normalizeList(watched), item.traktId);
