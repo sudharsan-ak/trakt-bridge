@@ -37,7 +37,7 @@ const moviesAndShows = {
   properties: { movies: itemArray, shows: itemArray },
 };
 
-function watchlistWriteAction(path: string, operationId: string, summary: string, notFoundDescription: string) {
+function traktIdWriteAction(path: string, operationId: string, summary: string, notFoundDescription: string) {
   return {
     [path]: {
       post: {
@@ -110,8 +110,8 @@ export async function GET(request: NextRequest) {
     openapi: "3.1.0",
     info: {
       title: "Trakt Bridge",
-      description: "Bridge exposing a Trakt user's watch history, watchlist, collection, ratings, and recommendations as normalized JSON, split into small per-section endpoints. Mostly read-only, with one write action (markWatched) gated by a required prior search + user confirmation.",
-      version: "2.2.0",
+      description: "Bridge exposing a Trakt user's watch history, watchlist, collection, ratings, and recommendations as normalized JSON, split into small per-section endpoints. Mostly read-only, with write actions (markWatched, markUnwatched, addToWatchlist, removeFromWatchlist) each gated by a required prior search + user confirmation.",
+      version: "2.3.0",
     },
     servers: [{ url: baseUrl }],
     paths: {
@@ -275,17 +275,23 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      ...watchlistWriteAction(
+      ...traktIdWriteAction(
         "/api/trakt/watchlist/add",
         "addToWatchlist",
         "Add a specific movie or show to the user's Trakt watchlist. Always call searchTraktTitle first to confirm the exact title with the user before adding.",
         "No movie/show found on Trakt with that id"
       ),
-      ...watchlistWriteAction(
+      ...traktIdWriteAction(
         "/api/trakt/watchlist/remove",
         "removeFromWatchlist",
         "Remove a specific movie or show from the user's Trakt watchlist. Always call searchTraktTitle first to confirm the exact title with the user before removing.",
         "No movie/show found on the user's Trakt watchlist with that id"
+      ),
+      ...traktIdWriteAction(
+        "/api/trakt/mark-unwatched",
+        "markUnwatched",
+        "Remove a specific movie or show from the user's Trakt watch history (marks it unwatched, deleting all plays). Always call searchTraktTitle first to confirm the exact title with the user before removing it from history.",
+        "No movie/show found on Trakt with that id"
       ),
     },
     components: {
