@@ -37,6 +37,55 @@ const moviesAndShows = {
   properties: { movies: itemArray, shows: itemArray },
 };
 
+function watchlistWriteAction(path: string, operationId: string, summary: string, notFoundDescription: string) {
+  return {
+    [path]: {
+      post: {
+        operationId,
+        summary,
+        security: [{ ApiKeyAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["traktId", "type"],
+                properties: {
+                  traktId: { type: "integer", description: "Trakt ID from a prior searchTraktTitle call" },
+                  type: { type: "string", enum: ["movie", "show"] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: summary,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    traktId: { type: "integer" },
+                    type: { type: "string" },
+                    action: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { description: "Missing or invalid traktId/type in request body" },
+          "401": { description: "Missing or invalid x-api-key" },
+          "404": { description: notFoundDescription },
+          "409": { description: "Trakt account not connected yet" },
+        },
+      },
+    },
+  };
+}
+
 function simpleGet(path: string, operationId: string, summary: string, responseSchema: object) {
   return {
     [path]: {
@@ -226,6 +275,18 @@ export async function GET(request: NextRequest) {
           },
         },
       },
+      ...watchlistWriteAction(
+        "/api/trakt/watchlist/add",
+        "addToWatchlist",
+        "Add a specific movie or show to the user's Trakt watchlist. Always call searchTraktTitle first to confirm the exact title with the user before adding.",
+        "No movie/show found on Trakt with that id"
+      ),
+      ...watchlistWriteAction(
+        "/api/trakt/watchlist/remove",
+        "removeFromWatchlist",
+        "Remove a specific movie or show from the user's Trakt watchlist. Always call searchTraktTitle first to confirm the exact title with the user before removing.",
+        "No movie/show found on the user's Trakt watchlist with that id"
+      ),
     },
     components: {
       schemas: {},

@@ -230,3 +230,53 @@ If both `movie` and `show` come back non-null and the user's intent is ambiguous
 Never call `markWatched` directly from a title without going through `searchTraktTitle` and confirmation first, even if the user seems certain - the confirmation step exists specifically to catch title ambiguity and wrong matches before they're written to a real account.
 
 On success, tell the user plainly what was marked watched (title, year) and when. On a 404, tell the user the Trakt ID didn't resolve to anything and don't retry with a guessed ID - re-run `searchTraktTitle` instead.
+
+---
+
+## addToWatchlist
+
+**Call:** `POST /api/trakt/watchlist/add` with a JSON body - **this is a write action with real effects on the user's account** (though easily reversible via `removeFromWatchlist`).
+
+**Request body:**
+```json
+{ "traktId": 698292, "type": "movie" }
+```
+- `traktId` (integer, required) - must come from a prior `searchTraktTitle` call, never invented or guessed.
+- `type` (string, required) - exactly `"movie"` or `"show"`.
+
+**Example success response:**
+```json
+{ "success": true, "traktId": 698292, "type": "movie", "action": "added" }
+```
+
+**Example not-found response (HTTP 404):**
+```json
+{ "success": false, "error": "No movie found on Trakt with id 698292" }
+```
+
+Same required process as `markWatched`: call `searchTraktTitle` first, confirm the exact title/year/poster with the user, only then call `addToWatchlist` with the confirmed `traktId`/`type`.
+
+---
+
+## removeFromWatchlist
+
+**Call:** `POST /api/trakt/watchlist/remove` with a JSON body - **this is a write action with real effects on the user's account.**
+
+**Request body:**
+```json
+{ "traktId": 698292, "type": "movie" }
+```
+- `traktId` (integer, required) - must come from a prior `searchTraktTitle` call (or from a prior `getTraktWatchlist` call), never invented or guessed.
+- `type` (string, required) - exactly `"movie"` or `"show"`.
+
+**Example success response:**
+```json
+{ "success": true, "traktId": 698292, "type": "movie", "action": "removed" }
+```
+
+**Example not-found response (HTTP 404):**
+```json
+{ "success": false, "error": "No movie found on the user's Trakt watchlist with id 698292" }
+```
+
+Confirm the exact title with the user before removing, same as `addToWatchlist` - a wrong removal is a real change to the user's account.
