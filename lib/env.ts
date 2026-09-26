@@ -27,4 +27,10 @@ export const env = {
   get RECOMMENDATION_API_KEY() {
     return required("RECOMMENDATION_API_KEY");
   },
+  get MCP_OWNER_KEY() {
+    return required("MCP_OWNER_KEY");
+  },
+  get MCP_PUBLIC_URL() {
+    return required("MCP_PUBLIC_URL");
+  },
 };
