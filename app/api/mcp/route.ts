@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { env } from "@/lib/env";
 import { getValidAccessToken } from "@/lib/trakt";
-import { validateBearerToken, requireScope, McpAuthError } from "@/lib/mcp-auth";
+import { validateBearerToken, requireScope, McpAuthError, type McpScope } from "@/lib/mcp-auth";
 import { buildMcpServer } from "@/lib/mcp-server";
 
 // The MCP entry point ChatGPT calls after linking via /oauth/authorize +
@@ -13,8 +13,10 @@ import { buildMcpServer } from "@/lib/mcp-server";
 //   2. The Trakt account itself must be connected (lib/trakt.ts) — this is
 //      the existing, unchanged this-server <-> Trakt relationship.
 // Both must pass before a fresh MCP server/transport is built per request
-// (stateless, matching Vercel's serverless model).
-async function authenticate(request: NextRequest) {
+// (stateless, matching Vercel's serverless model). trakt.read is the floor
+// for reaching this endpoint at all; buildMcpServer decides per-scope which
+// tools (e.g. the write ones, gated on trakt.write) actually get registered.
+async function authenticate(request: NextRequest): Promise<{ accessToken: string; scopes: McpScope[] }> {
   const context = await validateBearerToken(request.headers.get("authorization"));
   requireScope(context, "trakt.read");
 
@@ -23,7 +25,7 @@ async function authenticate(request: NextRequest) {
     throw new McpAuthError("invalid_grant", "Trakt account not connected yet. Visit /api/trakt/login first.");
   }
 
-  return accessToken;
+  return { accessToken, scopes: context.scopes };
 }
 
 function unauthorized(err: unknown) {
@@ -43,13 +45,14 @@ function unauthorized(err: unknown) {
 
 export async function POST(request: NextRequest) {
   let accessToken: string;
+  let scopes: McpScope[];
   try {
-    accessToken = await authenticate(request);
+    ({ accessToken, scopes } = await authenticate(request));
   } catch (err) {
     return unauthorized(err);
   }
 
-  const server = buildMcpServer(accessToken);
+  const server = buildMcpServer(accessToken, scopes);
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   await server.connect(transport);
   return transport.handleRequest(request);

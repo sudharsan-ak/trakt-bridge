@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withTraktAuth } from "@/lib/api-handler";
-import { traktPost } from "@/lib/trakt";
+import { performTraktWrite } from "@/lib/write-actions";
 
 // POST /sync/history/remove — https://docs.trakt.tv/reference/postsynchistoryremove
 //
@@ -13,11 +13,6 @@ interface MarkUnwatchedRequestBody {
   type?: "movie" | "show";
 }
 
-interface SyncHistoryRemoveResponse {
-  deleted: { movies: number; episodes: number };
-  not_found: { movies?: unknown[] | null; shows?: unknown[] | null };
-}
-
 export const POST = withTraktAuth(async (request, accessToken) => {
   const body = (await request.json().catch(() => null)) as MarkUnwatchedRequestBody | null;
 
@@ -28,22 +23,14 @@ export const POST = withTraktAuth(async (request, accessToken) => {
     );
   }
 
-  const key = body.type === "movie" ? "movies" : "shows";
-  const result = await traktPost<SyncHistoryRemoveResponse>({
-    accessToken,
-    path: "/sync/history/remove",
-    body: {
-      [key]: [{ ids: { trakt: body.traktId } }],
-    },
+  const result = await performTraktWrite(accessToken, "mark_unwatched", {
+    traktId: body.traktId,
+    type: body.type,
   });
 
-  const notFound = (result.not_found[key] ?? []).length > 0;
-  if (notFound) {
-    return NextResponse.json(
-      { success: false, error: `No ${body.type} found on Trakt with id ${body.traktId}` },
-      { status: 404 }
-    );
+  if (!result.success) {
+    return NextResponse.json(result, { status: 404 });
   }
 
-  return NextResponse.json({ success: true, traktId: body.traktId, type: body.type, action: "unwatched" });
+  return NextResponse.json({ success: true, traktId: result.traktId, type: result.type, action: result.action });
 });

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withTraktAuth } from "@/lib/api-handler";
-import { traktPost } from "@/lib/trakt";
+import { performTraktWrite } from "@/lib/write-actions";
 
 // POST /sync/watchlist — https://docs.trakt.tv/reference/postsyncwatchlist
 //
@@ -10,12 +10,6 @@ import { traktPost } from "@/lib/trakt";
 interface AddToWatchlistRequestBody {
   traktId?: number;
   type?: "movie" | "show";
-}
-
-interface SyncWatchlistResponse {
-  added: { movies: number; shows: number };
-  existing: { movies: number; shows: number };
-  not_found: { movies?: unknown[] | null; shows?: unknown[] | null };
 }
 
 export const POST = withTraktAuth(async (request, accessToken) => {
@@ -28,22 +22,14 @@ export const POST = withTraktAuth(async (request, accessToken) => {
     );
   }
 
-  const key = body.type === "movie" ? "movies" : "shows";
-  const result = await traktPost<SyncWatchlistResponse>({
-    accessToken,
-    path: "/sync/watchlist",
-    body: {
-      [key]: [{ ids: { trakt: body.traktId } }],
-    },
+  const result = await performTraktWrite(accessToken, "watchlist_add", {
+    traktId: body.traktId,
+    type: body.type,
   });
 
-  const notFound = (result.not_found[key] ?? []).length > 0;
-  if (notFound) {
-    return NextResponse.json(
-      { success: false, error: `No ${body.type} found on Trakt with id ${body.traktId}` },
-      { status: 404 }
-    );
+  if (!result.success) {
+    return NextResponse.json(result, { status: 404 });
   }
 
-  return NextResponse.json({ success: true, traktId: body.traktId, type: body.type, action: "added" });
+  return NextResponse.json({ success: true, traktId: result.traktId, type: result.type, action: result.action });
 });
