@@ -1,18 +1,21 @@
 import { NextResponse } from "next/server";
 import { withTraktAuth } from "@/lib/api-handler";
-import { traktGet } from "@/lib/trakt";
-import { normalizeList } from "@/lib/normalize";
+import { getContinueWatching } from "@/lib/continue-watching";
 
-// GET /sync/playback — https://docs.trakt.tv/reference/getsyncprogressplayback
-// Returns in-progress movies and episodes mixed together; Trakt doesn't
-// expose a reliable per-item type flag in the shared normalized shape, so
-// both come back in one "items" array (each item's presence of a "runtime"
-// vs episode fields would need extra per-item Trakt calls to disambiguate,
-// which isn't worth it for a continue-watching list).
-export const GET = withTraktAuth(async (_request, accessToken) => {
-  const playback = await traktGet({ accessToken, path: "/sync/playback" });
+// Matches app.trakt.tv/users/me/progress: for shows, this is mostly
+// next-episode-to-watch derived from watched history (/shows/{id}/progress/
+// watched), not literal paused playback — Trakt's /sync/playback endpoints
+// are only populated when a scrobbling client reports an actual mid-episode
+// pause, which is empty for most accounts most of the time. See
+// lib/continue-watching.ts for the full explanation and the merge logic.
+//
+// Accepts optional ?type=movie|show to match the website's Movies/Shows
+// tabs; omitted returns both, matching the website's default Media tab.
+export const GET = withTraktAuth(async (request, accessToken) => {
+  const typeParam = new URL(request.url).searchParams.get("type");
+  const type = typeParam === "movie" || typeParam === "show" ? typeParam : undefined;
 
-  return NextResponse.json({
-    items: normalizeList(playback),
-  });
+  const items = await getContinueWatching(accessToken, { type });
+
+  return NextResponse.json({ items });
 });

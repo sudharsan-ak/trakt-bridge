@@ -4,6 +4,7 @@ import { traktGet, traktGetAllPages } from "./trakt";
 import { normalizeList, normalizeItem, type NormalizedItem } from "./normalize";
 import { searchTraktTitle } from "./search";
 import { performTraktWrite } from "./write-actions";
+import { getContinueWatching, getPlaybackProgress } from "./continue-watching";
 import type { McpScope } from "./mcp-auth";
 
 // Builds a fresh McpServer per request (stateless mode — matches Vercel's
@@ -152,13 +153,31 @@ export function buildMcpServer(accessToken: string, scopes: McpScope[]): McpServ
     "get_trakt_continue_watching",
     {
       title: "Get Continue Watching",
-      description: "Returns in-progress movies and episodes (playback list).",
+      description:
+        "Returns what to watch next, matching the Trakt website's Continue Watching page: for shows, this is mostly the next unwatched episode per show (not literal paused playback), plus any movies/episodes with a genuinely saved pause position. Fully caught-up shows are excluded.",
+      inputSchema: {
+        type: z.enum(["movie", "show"]).optional().describe("Restrict to only movies or only shows; omit for both"),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ type }) => {
+      const items = await getContinueWatching(accessToken, { type });
+      return textResult({ items });
+    }
+  );
+
+  server.registerTool(
+    "get_trakt_playback_progress",
+    {
+      title: "Get Playback Progress",
+      description:
+        "Returns only movies/episodes with an actual saved mid-playback pause position reported by a Trakt-scrobbling client. Usually empty unless something was explicitly paused partway through. For 'what should I watch next' use get_trakt_continue_watching instead.",
       inputSchema: {},
       annotations: { readOnlyHint: true },
     },
     async () => {
-      const playback = await traktGet({ accessToken, path: "/sync/playback" });
-      return textResult({ items: normalizeList(playback) });
+      const items = await getPlaybackProgress(accessToken);
+      return textResult({ items });
     }
   );
 
